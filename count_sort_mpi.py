@@ -1,5 +1,5 @@
 #Execution: mpiexec -n <number_of_processes> python count_sort_mpi.py <size_of_array>
-
+#Poor performance, slower than the sequential execution
 
 import random, sys, time
 from mpi4py import MPI
@@ -61,7 +61,8 @@ def main(argv):
 
     # print('Process {} has local_y:'.format(rank), local_y)
 
-    comm.Reduce(local_y,result_y,op=MPI.SUM,root=0)      #combine the results to a global array (the ith element from each local array (local_y) are summed into the ith element in result array (result_y) of process 0
+    comm.Reduce(local_y,result_y,op=MPI.SUM,root=0)          #combine the results to a global array (the ith element from each local array (local_y) are summed into the ith element in result array (result_y) of process 0
+    # comm.Reduce((local_y,1,MPI.INT),(result_y,1,MPI.INT),root=0)  same performance
 
     if rank == 0:
         # print('After Reduce, sorted array on process 0 is:', result_y)
