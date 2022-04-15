@@ -1,7 +1,6 @@
-#Execution: mpiexec -n <number_of_processes> python mpi4pyprogram.py <number_of_steps>
+#Execution: mpiexec -n <number_of_processes> python pi_monte_carlo_mpi.py <number_of_steps>
 #Notes: cyclic distribution resulted in wrong result-->investigation (something wrong in the foor loop)
-
-
+import fileinput
 
 from mpi4py import MPI
 import time
@@ -12,33 +11,35 @@ import numpy as np
 
 def main(argv):
 
-    if len(argv) != 2:
-        print('Usage: {} <number of steps>' .format(argv[0]))
-        exit(1)
-    else:
-        try:
-            mySteps = int(argv[1])
-        except ValueError as e:
-            print('Integer convertion error: {}' .format(e))
-            exit(2)
-
-    if mySteps <= 0:
-        print('Steps cannot be non-positive.')
-        exit(3)
 
     comm=MPI.COMM_WORLD
     # MPI-related data
     rank=comm.Get_rank()
     nprocs=comm.Get_size()
 
-    # number of steps(tosses)
-    if rank==0:
-        steps=mySteps
-        start_time=time.time()
+    if rank==0:         #process input
+
+        if len(argv) != 2:
+            print('Usage: {} <number of steps>'.format(argv[0]))
+            exit(1)
+        else:
+            try:
+                steps = int(argv[1])        #number of steps(tosses)
+                # print("steps: ",steps)
+                start_time=time.time()            #start timing
+            except ValueError as e:
+                print('Integer convertion error: {}'.format(e))
+                exit(2)
+
+        if steps <= 0:
+            print('Steps cannot be non-positive.')
+            exit(3)
     else:
+
         steps=None
 
-    steps=comm.bcast(steps,root=0)
+
+    steps=comm.bcast(steps,root=0)         #broadcast steps to all processes
 
     my_count=0.0   #count of each process
 
@@ -71,7 +72,6 @@ def main(argv):
     # print("my rank is",rank," my count is: ",my_count)
     global_count=comm.reduce(my_count, op=MPI.SUM, root=0)    #collecting the results of each process in a global count
 
-
     if rank==0:
     # Estimating value of pi,
     # pi= 4*(no. of points generated inside the
@@ -79,8 +79,16 @@ def main(argv):
 
        pi=4* global_count/steps
 
+       stop_time=time.time()-start_time
        print('pi is: ',pi)
-       print('pi computed in {:.3f} sec'.format(time.time() - start_time))
+
+       print("Time %s sec " % stop_time)
+
+       # f = open("monteCarlo-Output.txt", "a")          #writes output in a new line
+       # text=['mpi program','with',str(nprocs),'processes','input',str(steps),'time:',str(stop_time),"\n"]
+       # s=' '.join(text)
+       # f.write(s)
+       # f.close()
 
 
 if __name__ == '__main__':
