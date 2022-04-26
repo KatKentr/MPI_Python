@@ -92,10 +92,20 @@ def main(argv):
 
   # print ("my rank", rank, "my local hist: ",local_hist)
 
-  global_hist=np.empty(alphabetsize,dtype=int)   #allocate space for global histogram
+  global_hist=None
 
-  comm.Reduce(local_hist,global_hist,op=MPI.SUM,root=0)  #add result of the local histogram of each process to global histogram
-                                                         #MPI.IN_PLACE?
+  if rank==0:
+
+    global_hist=np.empty(alphabetsize,dtype=int)   #allocate space for global histogram
+
+  if rank==0:
+
+      global_hist=local_hist
+      comm.Reduce(MPI.IN_PLACE,global_hist,op=MPI.SUM,root=0)
+
+  else:
+      comm.Reduce(local_hist,global_hist,op=MPI.SUM,root=0)     #add result of the local histogram of each process to global histogram
+
   if rank==0:
 
       # print("in process: ",rank,"histogram of characters calculated: ",global_hist)
