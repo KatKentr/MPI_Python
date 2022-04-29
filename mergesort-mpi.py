@@ -1,10 +1,11 @@
 import random
-
+import sys
+import fileinput
 from mpi4py import MPI
 import numpy as np
 from mergesort import *
 
-def mergesort_mpi():
+def mergesort_mpi(argv):
 
     comm = MPI.COMM_WORLD
     nprocs = comm.Get_size()
@@ -12,23 +13,38 @@ def mergesort_mpi():
 
     if rank==0:
 
-        size=10000
-        arr=np.zeros(size, dtype=np.int)
+        if len(argv) != 2:
+            print('Usage: {} <size of array>'.format(argv[0]))
+            exit(1)
+        else:
+            try:
+                arrSize = int(argv[1])        #size of the array
+
+
+            except ValueError as e:
+                print('Integer convertion error: {}'.format(e))
+                exit(2)
+
+        if arrSize <= 0:
+            print('Size cannot be non-positive.')
+            exit(3)
+
+        arr=np.zeros(arrSize, dtype=np.int)        #initialize array of type int
         size_chunk=np.zeros(nprocs,dtype=np.int)   #holds the size of each subarray assigned to each process
         displ=np.zeros(nprocs,dtype=np.int)        #holds the start index(displacement) of each subarray assigned to each process
 
-        for i in range (size):
+        for i in range (arrSize):                  #generate array of random integers
             arr[i]=random.randint(10, 100)
         # print(arr)
 
-        start_time=time.time()
+        start_time=time.time()             #start timing
 
         # determine the size of each sub-task
-        ave, res = divmod(size, nprocs)
+        ave, res = divmod(arrSize, nprocs)
 
         for i in range(nprocs):
 
-            # determine the starting and ending of each sub-task
+            # determine the starting and ending index of each sub-task
             start = i*ave
             stop = (i+1)*ave if i< nprocs-1 else (i+1)*ave+res
             size_chunk[i]=stop-start     #size of each subtask
@@ -44,27 +60,24 @@ def mergesort_mpi():
 
     comm.Bcast(size_chunk,root=0)    #broadcast size_chunk array to all processes since local_array(recieve buffer) needs to be initialized in each process
 
-    #allocate space for recbuf in each process
+    #allocate memory space for recieving buffer in each process
     local_array=np.zeros(size_chunk[rank],dtype=np.int)
 
-    comm.Scatterv([arr,size_chunk,displ,MPI.INT],local_array,root=0)   #Scatterv works too with exactly the same arguments
+    comm.Scatterv([arr,size_chunk,displ,MPI.INT],local_array,root=0)   #Scatter subarrays to processess
     # print('After Scatterv, process {} has data:'.format(rank), local_array)
 
-    # local_list=local_array.tolist()     #convert array to list
-    # mergeSort(local_list)
+
     local_array=mergeSort_np(local_array)   #perform the mergesort in each process
 
 
-
     #gather the sorted subarrays
-    # sendbuf2 = np.array(local_array)          #convert list to numpy array
+
     recvbuf2 = np.zeros(sum(size_chunk),dtype=np.int)
     comm.Gatherv(local_array, [recvbuf2, size_chunk, displ, MPI.INT], root=0)
 
     #make the final mergesort call
     if rank==0:
-        # recvbuf2=recvbuf2.tolist()
-        # mergeSort(recvbuf2)
+
         recvbuf2=mergeSort_np(recvbuf2)
         # print(recvbuf2)
         # print(recvbuf2.size)
@@ -72,6 +85,12 @@ def mergesort_mpi():
         stop_time=time.time()-start_time
         print("Time %s sec " % stop_time)
 
+        # f = open("mergesort-Output.txt", "a")          #writes output in a new line
+        # text=['mpi program','with',str(nprocs),'processes','input',str(arrSize),'time:',str(stop_time),"\n"]
+        # s=' '.join(text)
+        # f.write(s)
+        # f.close()
+
 
 if __name__ == '__main__':
-    mergesort_mpi()
+    mergesort_mpi(sys.argv)
