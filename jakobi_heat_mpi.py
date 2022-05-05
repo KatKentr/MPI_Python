@@ -1,4 +1,4 @@
-#Execution: mpiexec -n <number_of_processes> python jakobi_heat_mpi.py
+#Execution: mpiexec -n <number_of_processes> python jakobi_heat_mpi.py <problem_size>
 # Notes: For the current implementation input size should be evenly divisable by the number of processes. Attempts to scatter the matrix among process with Scatterv resulted in incorrect results
 # Further investigation: 1) how to scatter and gather uneven 2D matrices,2) implement non-blocking communication
 
@@ -17,11 +17,11 @@ def main(argv):
     if rank==0:         #process input
 
         if len(argv) != 2:
-            print('Usage: {} <number of steps>'.format(argv[0]))
+            print('Usage: {} <problem size>'.format(argv[0]))
             exit(1)
         else:
             try:
-                tableSize = int(argv[1])        #number of steps(tosses)
+                tableSize = int(argv[1])        #dimension of nxn table
                 # print("steps: ",steps)
                 start_time=time.time()            #start timing
             except ValueError as e:
@@ -38,10 +38,10 @@ def main(argv):
 
     tableSize=comm.bcast(tableSize,root=0)         #broadcast tableSize to all processes
 
-    ITERATIONS = 200       #timesteps
-    ACCURACY = 5                                      #each process will calculate a submatrix of the original matrix of size tableSize x tableSize
+    iterations = 200       #timesteps
+    accuracy = 5
 
-    ave, res = divmod(tableSize, nprocs)
+    ave, res = divmod(tableSize, nprocs)                    #each process will calculate a submatrix of the original matrix of size: myRows x tableSize
 
    #determine the starting and ending row index of each submatrix assigned to processs
     start=rank*ave
@@ -61,20 +61,21 @@ def main(argv):
     COL = tableSize//2
     START = 200
 
-    t=0
 
-    while True:
+    for i in range(0,iterations):
 
         #send and recieve border region of local submatrix
         if rank>0:
 
          comm.Send(localTable1[1,:],dest=rank-1,tag=11)
+         # comm.Isend(localTable1[1,:],dest=rank-1,tag=11)    #non-blocking send, may be not correct though
          comm.Recv(localTable1[0,:],source=rank-1,tag=22)
 
         if rank<nprocs-1:
 
          comm.Recv(localTable1[myRows+1,:],source=rank+1,tag=11)
          comm.Send(localTable1[myRows,:],dest=rank+1,tag=22)
+         # comm.Isend(localTable1[myRows,:],dest=rank+1,tag=22)     #non-blocking send
 
         if rank==nprocs//2:          #heat Source
 
@@ -82,7 +83,6 @@ def main(argv):
 
         localDiff=0
 
-        t=t+1                  #increment time
 
         # Perform calculations
         for i in range(i_first, i_last+1):
@@ -102,18 +102,18 @@ def main(argv):
         # if rank==0:
         #     print(" At iteration: ",t," diff is: ",globDiff)
 
-        if globDiff<ACCURACY or t==ITERATIONS-1:
+        if globDiff<accuracy:
             break
 
     recvbuf = np.zeros((tableSize,tableSize))
     comm.Gatherv(localTable1[i_first:i_last+1],recvbuf,root=0)      #gather the result submatrices to a global matrix in process 0
 
-    if rank==0:             #plot result
+    if rank==0:
 
         endTime=time.time() - start_time
         print('solution calculated in in {:.3f} sec'.format(endTime))
-        plt.imshow(recvbuf)
-        plt.show()
+        # plt.imshow(recvbuf)        #plot result
+        # plt.show()
 
 
 
