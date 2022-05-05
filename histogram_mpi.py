@@ -58,10 +58,6 @@ def main(argv):
         size_chunk[i]=stop-start     #size of each subtask
         displ[i]=start
 
-    # list_new=np.array_split(text_arr,nprocs)  #its a list of arrays. Array is splitted in nprocs arrays. Each process will recieve a chuck of the initial array
-    # arr_new=np.array(list_new)                #converts list to a numpy array with nprocs elements
-    # print(len(arr_new[0]))
-
   else:
 
       text_arr=None
@@ -69,18 +65,10 @@ def main(argv):
       displ=None
 
 
-  comm.Bcast(size_chunk,root=0)
+  comm.Bcast(size_chunk,root=0)   #brodcast size_chunk to processes
 
-  data=np.empty(size_chunk[rank],dtype='U')
+  data=np.empty(size_chunk[rank],dtype='U')   #allocate memory space for recieving buffer in each process
   comm.Scatterv([text_arr,size_chunk,displ,MPI.INT],data,root=0)   #Scatter subarrays to processess
-
-
-  # recbuf=np.empty(len(arr_new[rank]))   #(Investigation, if we could use something like this) allocating space for the recieving buffer array
-  # print("rank ",rank,"my recbuf is: ",recbuf)
-  # comm.Scatter(data, recvbuf, root=0)
-
-  #scatter data
-  # data=comm.scatter(arr_new,root=0)      #Each process will recieve an element(a subarray) of the array arr_new
 
   # print("my rank: ",rank,data.size)
 

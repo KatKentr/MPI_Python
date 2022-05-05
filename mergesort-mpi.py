@@ -1,3 +1,5 @@
+#Execution: mpiexec -n <number_of_processes> python mergesort_sort_mpi.py <size_of_array>
+
 import random
 import sys
 import fileinput
@@ -67,7 +69,7 @@ def mergesort_mpi(argv):
     # print('After Scatterv, process {} has data:'.format(rank), local_array)
 
 
-    local_array=mergeSort_np(local_array)   #perform the mergesort in each process
+    local_array=mergeSort_np(local_array)   #perform the mergesort on each process
 
 
     #gather the sorted subarrays

@@ -11,7 +11,6 @@ import numpy as np
 
 def main(argv):
 
-
     comm=MPI.COMM_WORLD
     # MPI-related data
     rank=comm.Get_rank()

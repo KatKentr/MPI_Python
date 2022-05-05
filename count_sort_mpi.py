@@ -7,12 +7,19 @@ import numpy as np
 
 
 def main(argv):
+
+    comm=MPI.COMM_WORLD      #communicator object
+    # MPI-related data
+    rank=comm.Get_rank()
+    nprocs=comm.Get_size()
+
     if len(argv) != 2:
         print('Usage: {} <list size>' .format(argv[0]))
         exit(1)
     else:
         try:
             arrSize = int(argv[1])
+            # print('size: is',arrSize)
         except ValueError as e:
             print('Integer convertion error: {}' .format(e))
             exit(2)
@@ -21,11 +28,7 @@ def main(argv):
         print('Steps cannot be non-positive.')
         exit(3)
 
-    comm=MPI.COMM_WORLD
-    # MPI-related data
-    rank=comm.Get_rank()
-    nprocs=comm.Get_size()
-
+    # result_y=np.empty(arrSize,dtype=int)   (alternatively)
 
     if rank==0:
 
@@ -34,10 +37,10 @@ def main(argv):
         # print("initial array: ",x)
         start_time=time.time()
     else:
-        x=np.zeros(arrSize,dtype=int)         #x needs to be initialized on the worker processes before Bcast is called
+        x=np.zeros(arrSize,dtype=int)         #x needs to be initialized on the worker processes before Bcast is called (allocate space)
         result_y=None
 
-    comm.Bcast(x,root=0)       #broadcasting a buffer like object x from the master process to all the worker processes
+    comm.Bcast(x,root=0)       #broadcasting the array as a buffer like object from the master process to all the worker processes(faster communication than using bcast)
 
     # print('Process {} has data:'.format(rank), x)
 
@@ -63,6 +66,7 @@ def main(argv):
 
     comm.Reduce(local_y,result_y,op=MPI.SUM,root=0)          #combine the results to a global array (the ith element from each local array (local_y) are summed into the ith element in result array (result_y) of process 0
     # comm.Reduce((local_y,1,MPI.INT),(result_y,1,MPI.INT),root=0)  same performance
+
 
     if rank == 0:
         # print('After Reduce, sorted array on process 0 is:', result_y)
